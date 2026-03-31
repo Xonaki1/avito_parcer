@@ -1,9 +1,8 @@
 import asyncio
 import random
-import time
 from datetime import datetime
 
-from playwright.sync_api import sync_playwright
+from playwright.async_api import async_playwright
 from playwright_stealth import Stealth
 
 
@@ -12,9 +11,9 @@ async def parse_avito(
     location: str = "rossiya",
     max_pages: int = 1,
 ) -> list[dict]:
-    def parse_sync() -> list[dict]:
-        items: list[dict] = []
-        base_url = f"https://www.avito.ru/{location}?q={query.replace(' ', '+')}"
+    """Асинхронный парсер Avito с playwright."""
+    items: list[dict] = []
+    base_url = f"https://www.avito.ru/{location}?q={query.replace(' ', '+')}"
 
     async with async_playwright() as p:
         browser = await p.chromium.launch(
@@ -30,7 +29,7 @@ async def parse_avito(
             ),
         )
         page = await context.new_page()
-        # Apply stealth evasions to the created page.
+
         await Stealth().apply_stealth_async(page)
 
         for page_num in range(1, max_pages + 1):
@@ -59,7 +58,7 @@ async def parse_avito(
                     )
                     link = (
                         "https://www.avito.ru"
-                        + await link_elem.get_attribute("href")
+                        + (await link_elem.get_attribute("href") or "")
                         if await link_elem.count() > 0
                         else ""
                     )
@@ -69,9 +68,7 @@ async def parse_avito(
                             "title": title.strip(),
                             "price": price.strip(),
                             "link": link,
-                            "parsed_at": datetime.now().strftime(
-                                "%Y-%m-%d %H:%M:%S"
-                            ),
+                            "parsed_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                         }
                     )
                 except Exception:
@@ -83,4 +80,3 @@ async def parse_avito(
         await browser.close()
 
     return items
-

@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Form, Request
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
+import asyncio
 
 from app.core.paths import RESULTS_DIR
 from app.services.avito_parser import parse_avito
@@ -8,7 +9,7 @@ from app.services.csv_store import save_items_to_csv
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
-
+PARSE_SEMAPHORE = asyncio.Semaphore(3)
 
 @router.get("/", response_class=HTMLResponse)
 async def home(request: Request):
