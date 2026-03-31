@@ -1,0 +1,2 @@
+pip install fastapi uvicorn playwright playwright-stealth jinja2 python-multipart
+playwright install chromium
