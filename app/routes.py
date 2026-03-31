@@ -12,7 +12,7 @@ templates = Jinja2Templates(directory="templates")
 
 @router.get("/", response_class=HTMLResponse)
 async def home(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+    return templates.TemplateResponse(request, "index.html")
 
 
 @router.post("/parse")
@@ -26,6 +26,7 @@ async def start_parse(
     csv_path = save_items_to_csv(items, query)
 
     return templates.TemplateResponse(
+        request,
         "index.html",
         {
             "request": request,
