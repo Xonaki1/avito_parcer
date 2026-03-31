@@ -29,7 +29,7 @@ async def start_parse(
         "index.html",
         {
             "request": request,
-            "items": items[:50],  # show first 50 in the table
+            "items": items[:50],
             "total": len(items),
             "filename": csv_path.name,
             "query": query,
@@ -43,4 +43,3 @@ async def download(filename: str):
     if not file_path.exists():
         return {"error": "Файл не найден"}
     return FileResponse(file_path, media_type="text/csv", filename=filename)
-
