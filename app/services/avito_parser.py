@@ -11,11 +11,8 @@ async def parse_avito(
     location: str = "rossiya",
     max_pages: int = 1,
 ) -> list[dict]:
-    """МИНИМАЛЬНАЯ СТАБИЛЬНАЯ ВЕРСИЯ — 31.03.2026 (БЕЗ networkidle)"""
     items: list[dict] = []
     base_url = f"https://www.avito.ru/{location}?q={query.replace(' ', '+')}"
-
-    print("=== НОВАЯ СТАБИЛЬНАЯ ВЕРСИЯ ЗАПУЩЕНА ===")   # ← этот текст должен появиться
 
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=False)
@@ -30,29 +27,32 @@ async def parse_avito(
 
         for page_num in range(1, max_pages + 1):
             url = f"{base_url}&p={page_num}" if page_num > 1 else base_url
-            print(f"📄 Открываем: {url}")
 
             await page.goto(url, wait_until="domcontentloaded", timeout=60000)
-            await page.wait_for_timeout(10000)   # ← вместо networkidle
+            await page.wait_for_timeout(10000)
 
-            print("📜 Скроллим...")
             for i in range(5):
                 await page.evaluate("window.scrollBy(0, 800)")
                 await asyncio.sleep(1.5)
 
             listings = await page.locator('[data-marker="item"]').all()
-            print(f"✅ Найдено карточек: {len(listings)}")
 
             for listing in listings:
                 try:
                     title = await listing.locator('[data-marker="item-title"]').inner_text(timeout=3000)
                     price = await listing.locator('[data-marker="item-price"]').inner_text(timeout=3000)
+
+                    date_elem = listing.locator('[data-marker="item-date"]')
+                    published_at = await date_elem.inner_text(timeout=3000) if await date_elem.count() > 0 else "Не указано"
+
                     link = "https://www.avito.ru" + (
                         await listing.locator('a[data-marker="item-title"]').get_attribute("href") or ""
                     )
+
                     items.append({
                         "title": title.strip(),
                         "price": price.strip(),
+                        "published_at": published_at.strip(),
                         "link": link,
                         "parsed_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                     })
@@ -61,5 +61,4 @@ async def parse_avito(
 
         await browser.close()
 
-    print(f"✅ Парсинг завершён. Всего объявлений: {len(items)}")
     return items

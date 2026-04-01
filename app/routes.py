@@ -1,47 +1,42 @@
-from fastapi import APIRouter, Form, Request
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi import APIRouter, Request, Form
 from fastapi.templating import Jinja2Templates
-import asyncio
+from fastapi.responses import HTMLResponse
 
-from app.core.paths import RESULTS_DIR
 from app.services.avito_parser import parse_avito
-from app.services.csv_store import save_items_to_csv
+from app.services.price_calculator import calculate_price_stats
 
 router = APIRouter()
-templates = Jinja2Templates(directory="templates")
-PARSE_SEMAPHORE = asyncio.Semaphore(3)
+templates = Jinja2Templates(directory="app/templates")
+
 
 @router.get("/", response_class=HTMLResponse)
-async def home(request: Request):
-    return templates.TemplateResponse(request, "index.html")
+async def index(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request})
 
 
-@router.post("/parse")
+@router.post("/parse", response_class=HTMLResponse)
 async def start_parse(
     request: Request,
     query: str = Form(...),
     location: str = Form("rossiya"),
     max_pages: int = Form(1),
+    exclude_anomalies: bool = Form(False),
 ):
     items = await parse_avito(query, location, max_pages)
-    csv_path = save_items_to_csv(items, query)
+
+    filtered_items, avg_price, filtered_count = calculate_price_stats(
+        items, exclude_anomalies
+    )
 
     return templates.TemplateResponse(
-        request,
         "index.html",
         {
             "request": request,
-            "items": items[:50],
-            "total": len(items),
-            "filename": csv_path.name,
+            "items": filtered_items,
+            "avg_price": round(avg_price) if avg_price else 0,
+            "total_items": len(items),
+            "filtered_items_count": filtered_count,
+            "exclude_anomalies": exclude_anomalies,
             "query": query,
         },
     )
-
-
-@router.get("/download/{filename}")
-async def download(filename: str):
-    file_path = RESULTS_DIR / filename
-    if not file_path.exists():
-        return {"error": "Файл не найден"}
-    return FileResponse(file_path, media_type="text/csv", filename=filename)
